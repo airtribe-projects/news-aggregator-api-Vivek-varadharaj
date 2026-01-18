@@ -7,7 +7,7 @@ const getPreferencesByUserId = async (userId) => {
     return {
       categories: [],
       language: "en",
-      country: "in",
+      country: "us",
       sources: [],
     };
   }
