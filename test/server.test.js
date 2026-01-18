@@ -1,7 +1,41 @@
 const tap = require('tap');
 const supertest = require('supertest');
+const mongoose = require('mongoose');
+const env = require('../src/config/env');
+
 const app = require('../app');
 const server = supertest(app);
+
+// Connect to database before all tests
+let dbConnected = false;
+
+const connectDB = async () => {
+    if (!dbConnected && mongoose.connection.readyState === 0) {
+        try {
+            await mongoose.connect(env.mongodbUri, {
+                serverSelectionTimeoutMS: 10000
+            });
+            dbConnected = true;
+            console.log('MongoDB connected successfully for tests');
+        } catch (err) {
+            console.error('Failed to connect to database:', err.message);
+        }
+    }
+};
+
+// Connect before first test and clean up
+tap.before(async () => {
+    await connectDB();
+    // Clean up test user if exists
+    const UserModel = require('../src/models/user_model');
+    const PreferenceModel = require('../src/models/preferences.model');
+    const testEmail = 'clark@superman.com';
+    const existingUser = await UserModel.findOne({ email: testEmail });
+    if (existingUser) {
+        await PreferenceModel.deleteOne({ user: existingUser._id });
+        await UserModel.deleteOne({ _id: existingUser._id });
+    }
+});
 
 const mockUser = {
     name: 'Clark Kent',
@@ -14,7 +48,7 @@ let token = '';
 
 // Auth tests
 
-tap.test('POST /users/signup', async (t) => { 
+tap.test('POST /users/signup', async (t) => {
     const response = await server.post('/users/signup').send(mockUser);
     t.equal(response.status, 200);
     t.end();
@@ -70,6 +104,7 @@ tap.test('PUT /users/preferences', async (t) => {
         preferences: ['movies', 'comics', 'games']
     });
     t.equal(response.status, 200);
+    t.end();
 });
 
 tap.test('Check PUT /users/preferences', async (t) => {
@@ -96,6 +131,8 @@ tap.test('GET /news without token', async (t) => {
 
 
 
-tap.teardown(() => {
-    process.exit(0);
+tap.teardown(async () => {
+    if (mongoose.connection.readyState !== 0) {
+        await mongoose.connection.close();
+    }
 });

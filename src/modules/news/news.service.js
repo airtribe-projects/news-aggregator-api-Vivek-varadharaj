@@ -8,13 +8,10 @@ const { getCache, setCache } = require("../../utils/cache");
 const CACHE_TTL = 300;
 
 const fetchPersonalizedNews = async (userId) => {
-  const preferences = await Preference.findOne({ user: userId });
+  const preferenceDoc = await Preference.findOne({ user: userId });
 
-  if (!preferences) {
-    const error = new Error("User preferences not found");
-    error.statusCode = status.BAD_REQUEST;
-    throw error;
-  }
+  const preferences = preferenceDoc?.preferences || [];
+  console.log("User preferences:", preferences);
 
   const cacheKey = buildCacheKey(preferences);
   const cachedNews = await getCache(cacheKey);
@@ -24,17 +21,14 @@ const fetchPersonalizedNews = async (userId) => {
     return cachedNews;
   }
 
-  const { categories, language, country } = preferences;
+  const category = preferences.length > 0 ? preferences[0] : "general";
 
   const params = {
     apiKey: env.apiKey,
-    language,
-    country,
+    language: "en",
+    country: "us",
+    category: category,
   };
-
-  if (categories?.length) {
-    params.category = categories[0];
-  }
 
   try {
     const response = await apiClient.get(
@@ -42,7 +36,7 @@ const fetchPersonalizedNews = async (userId) => {
       { params },
     );
 
-    const normalizedArticles = normalizeArticles(response.data.articles);
+    const normalizedArticles = normalizeArticles(response.data.articles || []);
 
     await setCache(cacheKey, normalizedArticles, CACHE_TTL);
 
@@ -50,9 +44,8 @@ const fetchPersonalizedNews = async (userId) => {
 
     return normalizedArticles;
   } catch (err) {
-    const error = new Error("Failed to fetch news from external API");
-    error.statusCode = status.SERVICE_UNAVAILABLE;
-    throw error;
+    console.error("Failed to fetch news from external API:", err.message);
+    return [];
   }
 };
 
@@ -66,11 +59,9 @@ const normalizeArticles = (articles = []) => {
   }));
 };
 
-const buildCacheKey = (prefs) => {
+const buildCacheKey = (preferences) => {
   const rawKey = JSON.stringify({
-    country: prefs.country,
-    language: prefs.language,
-    categories: prefs.categories,
+    preferences: preferences,
   });
 
   return `news:${crypto.createHash("md5").update(rawKey).digest("hex")}`;

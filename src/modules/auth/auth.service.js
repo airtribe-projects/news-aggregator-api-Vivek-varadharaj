@@ -1,13 +1,14 @@
 const bcrypt = require("bcrypt");
 const UserModel = require("../../models/user_model");
+const PreferenceModel = require("../../models/preferences.model");
 const { status } = require("http-status");
 const { bcryptSaltRounds } = require("../../config/env");
 const jwt = require("jsonwebtoken");
 const { jwtConfig } = require("../../config/jwt");
 
-const registerUser = async (email, password) => {
-  if (!email || !password) {
-    const error = new Error("Email and password are required");
+const signupUser = async (name, email, password, preferences = []) => {
+  if (!name || !email || !password) {
+    const error = new Error("Name, email and password are required");
     error.statusCode = status.BAD_REQUEST;
     throw error;
   }
@@ -18,10 +19,20 @@ const registerUser = async (email, password) => {
     throw error;
   }
   const hashedPassword = await bcrypt.hash(password, bcryptSaltRounds);
-  const newUser = UserModel.create({
+  const newUser = await UserModel.create({
+    name,
     email,
     passwordHash: hashedPassword,
   });
+  
+  // Create preferences if provided
+  if (preferences && preferences.length > 0) {
+    await PreferenceModel.create({
+      user: newUser._id,
+      preferences: preferences,
+    });
+  }
+  
   return newUser;
 };
 
@@ -47,8 +58,8 @@ const loginUser = async (email, password) => {
   const token = jwt.sign({ userId: user._id }, jwtConfig.secret, {
     expiresIn: jwtConfig.expiresIn,
   });
-  user.token = token;
-  return user;
+  
+  return token;
 };
 
-module.exports = { registerUser, loginUser };
+module.exports = { signupUser, loginUser };

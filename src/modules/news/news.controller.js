@@ -6,9 +6,7 @@ const getPersonalizedNews = async (req, res, next) => {
   try {
     const news = await fetchPersonalizedNews(userId);
     res.status(status.OK).json({
-      message: "Personalized news retrieved successfully",
-      success: true,
-      data: news,
+      news: news,
     });
   } catch (error) {
     next(error);

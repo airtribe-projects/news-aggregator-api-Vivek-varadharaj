@@ -4,37 +4,27 @@ const getPreferencesByUserId = async (userId) => {
   const prefs = await Preference.findOne({ user: userId });
 
   if (!prefs) {
-    return {
-      categories: [],
-      language: "en",
-      country: "us",
-      sources: [],
-    };
+    return [];
   }
 
-  return prefs;
+  return prefs.preferences || [];
 };
 
-const upsertPreferencesByUserId = async (userId, data) => {
-  const allowedFields = ["categories", "language", "country", "sources"];
-  const update = {};
-
-  for (const key of allowedFields) {
-    if (data[key] !== undefined) {
-      update[key] = data[key];
-    }
+const updatePreferencesByUserId = async (userId, preferences) => {
+  if (!Array.isArray(preferences)) {
+    const error = new Error("Preferences must be an array");
+    error.statusCode = 400;
+    throw error;
   }
 
-  const prefs = await Preference.findOneAndUpdate(
+  await Preference.findOneAndUpdate(
     { user: userId },
-    { user: userId, ...update },
+    { user: userId, preferences: preferences },
     { upsert: true, new: true },
   );
-
-  return prefs;
 };
 
 module.exports = {
   getPreferencesByUserId,
-  upsertPreferencesByUserId,
+  updatePreferencesByUserId,
 };

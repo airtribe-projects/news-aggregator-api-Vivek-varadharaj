@@ -8,19 +8,7 @@ const preferenceSchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    categories: {
-      type: [String],
-      default: [],
-    },
-    language: {
-      type: String,
-      default: "en",
-    },
-    country: {
-      type: String,
-      default: "us",
-    },
-    sources: {
+    preferences: {
       type: [String],
       default: [],
     },

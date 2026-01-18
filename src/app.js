@@ -6,7 +6,7 @@ const errorHandler = require("./middlewares/error.middleware");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api/v1", router);
+app.use(router);
 app.use(errorHandler);
 
 module.exports = app;
